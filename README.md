@@ -6,13 +6,13 @@ Remove a deployed review-application on [Laravel Forge](https://forge.laravel.co
 
 It is highly recommended that you store all inputs using [GitHub Secrets](https://docs.github.com/en/actions/reference/encrypted-secrets) or variables.
 
-| Input                       | Required | Default                                | Description                                                                                                                        |
-|-----------------------------|----------|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| `forge_api_token`           | yes      |                                        | Laravel Forge API key.<br>You can generate an API key in your [Forge dashboard](https://forge.laravel.com/user-profile/api).       |
-| `forge_server_id`           | yes      |                                        | Laravel Forge server ID                                                                                                            |
-| `root_domain`               | no       |                                        | Root domain under which to create review-app site.                                                                                 |
-| `host`                      | no       |                                        | Site host of the review-app.<br>The branch name the action is running on will be used to generate it if not defined (recommended). |
-| `database_name`             | no       |                                        | Database name of the review-app site (recommended).                                                                                |
+| Input                       | Required | Default                                | Description                                                                                                                                 |
+|-----------------------------|----------|----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `forge_api_token`           | yes      |                                        | Laravel Forge API key.<br>You can generate an API key in your [Forge dashboard](https://forge.laravel.com/user-profile/api).                |
+| `forge_server_id`           | yes      |                                        | Laravel Forge server ID                                                                                                                     |
+| `root_domain`               | no       |                                        | Root domain under which to create review-app site.                                                                                          |
+| `host`                      | no       |                                        | Site host of the review-app.<br>The branch name the action is running on will be used to generate it if not defined (recommended).          |
+| `database_name`             | no       |                                        | Database name of the review-app site.<br>The branch name the action is running on will be used to generate it if not defined (recommended). |
 
 ## Outputs
 
