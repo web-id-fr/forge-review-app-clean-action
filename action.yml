@@ -1,0 +1,30 @@
+name: 'Forge Review-app Clean Action'
+description: 'Clean a review-application on Laravel Forge'
+author: 'rygilles'
+branding:
+  icon: upload-cloud
+  color: red
+inputs:
+  forge_api_token:
+    description: 'Laravel Forge API key'
+    required: true
+  forge_server_id:
+    description: 'Laravel Forge server ID'
+    required: true
+  root_domain:
+    description: 'Root domain under which to create review-app site'
+    required: false
+  host:
+    description: 'Site host of the review-app'
+    required: false
+  database_name:
+    description: 'Database name of the review-app site'
+    required: false
+outputs:
+  host:
+    description: 'Host of the review-app (generated or forced one in inputs)'
+  database_name:
+    description: 'Database name of the review-app (generated or forced one in inputs)'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
