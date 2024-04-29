@@ -19,7 +19,27 @@ if [[ -z "$INPUT_PREFIX_WITH_PR_NUMBER" ]]; then
 fi
 
 if [[ $INPUT_PREFIX_WITH_PR_NUMBER == 'true' ]]; then
-  PR_NUMBER=$(echo "$GITHUB_REF_NAME" | grep -oE '[0-9]+')
+  if [[ -z "$INPUT_PR_NUMBER" ]]; then
+    echo "* PR_NUMBER extraction from GITHUB_REF_NAME value: $GITHUB_REF_NAME"
+    set +e
+    PR_NUMBER=$(echo "$GITHUB_REF_NAME" | grep -oE '[0-9]+')
+    set -e
+    if [[ -z "$PR_NUMBER" ]]; then
+      echo "Error: No PR number found"
+      exit 1
+    fi
+  else
+    echo "* PR_NUMBER manually defined to: $INPUT_PR_NUMBER"
+    set +e
+    PR_NUMBER=$(echo "$INPUT_PR_NUMBER" | grep -oE '[0-9]+')
+    set -e
+    if [[ -z "$PR_NUMBER" ]]; then
+      echo "Error: No PR number found"
+      exit 1
+    fi
+  fi
+  echo "Parsed value: $PR_NUMBER"
+  echo ""
   ESCAPED_BRANCH=$(echo "$PR_NUMBER-$ESCAPED_BRANCH")
 fi
 
@@ -72,7 +92,6 @@ fi
 
 AUTH_HEADER="Authorization: Bearer $INPUT_FORGE_API_TOKEN"
 
-echo ""
 echo '* Get Forge server sites'
 API_URL="https://forge.laravel.com/api/v1/servers/$INPUT_FORGE_SERVER_ID/sites"
 JSON_RESPONSE=$(
