@@ -21,6 +21,9 @@ inputs:
     description: 'Use the pull-request number as host and database prefix when host is not manually defined'
     required: false
     default: 'true'
+  pr_number:
+    description: 'Manually define pull-request number'
+    required: false
   database_name:
     description: 'Database name of the review-app site'
     required: false

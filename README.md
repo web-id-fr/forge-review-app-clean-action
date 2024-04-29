@@ -30,15 +30,16 @@ For example, a `fix-37` branch with `mydomain.tld` root_domain will result in a 
 
 It is highly recommended that you store all inputs using [GitHub Secrets](https://docs.github.com/en/actions/reference/encrypted-secrets) or variables.
 
-| Input                       | Required | Default                                | Description                                                                                                                                 |
-|-----------------------------|----------|----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| `forge_api_token`           | yes      |                                        | Laravel Forge API key.<br>You can generate an API key in your [Forge dashboard](https://forge.laravel.com/user-profile/api).                |
-| `forge_server_id`           | yes      |                                        | Laravel Forge server ID                                                                                                                     |
-| `root_domain`               | no       |                                        | Root domain under which to create review-app site.                                                                                          |
-| `host`                      | no       |                                        | Site host of the review-app.<br>The branch name the action is running on will be used to generate it if not defined (recommended).          |
-| `prefix_with_pr_number`     | no       | `true`                                 | Use the pull-request number as host and database prefix when host is not manually defined.                                                  |
-| `database_name`             | no       |                                        | Database name of the review-app site.<br>The branch name the action is running on will be used to generate it if not defined (recommended). |
-| `database_name_prefix`      | no       |                                        | Database name prefix, useful for PostgreSQL that does not support digits (PR number) for first chars.                                       |
+| Input                   | Required | Default | Description                                                                                                                                                                                   |
+|-------------------------|----------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `forge_api_token`       | yes      |         | Laravel Forge API key.<br>You can generate an API key in your [Forge dashboard](https://forge.laravel.com/user-profile/api).                                                                  |
+| `forge_server_id`       | yes      |         | Laravel Forge server ID                                                                                                                                                                       |
+| `root_domain`           | no       |         | Root domain under which to create review-app site.                                                                                                                                            |
+| `host`                  | no       |         | Site host of the review-app.<br>The branch name the action is running on will be used to generate it if not defined (recommended).                                                            |
+| `prefix_with_pr_number` | no       | `true`  | Use the pull-request number as host and database prefix when host is not manually defined.                                                                                                    |
+| `pr_number`             | no       |         | Manually define pull-request number (⚠️ Based on `GITHUB_REF_NAME` by default, but does not seems to work properly, according to this [issue](https://github.com/actions/runner/issues/256)). |
+| `database_name`         | no       |         | Database name of the review-app site.<br>The branch name the action is running on will be used to generate it if not defined (recommended).                                                   |
+| `database_name_prefix`  | no       |         | Database name prefix, useful for PostgreSQL that does not support digits (PR number) for first chars.                                                                                         |
 
 ## Outputs
 
