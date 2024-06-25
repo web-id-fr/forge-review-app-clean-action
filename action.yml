@@ -21,6 +21,9 @@ inputs:
     description: 'Use the pull-request number as host and database prefix when host is not manually defined'
     required: false
     default: 'true'
+  fqdn_prefix:
+    description: 'Prefix the whole FQDN (e.g.: "app.")'
+    required: false
   pr_number:
     description: 'Manually define pull-request number'
     required: false
