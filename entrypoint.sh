@@ -48,6 +48,10 @@ if [[ -z "$INPUT_HOST" ]]; then
   if [[ -z "$INPUT_ROOT_DOMAIN" ]]; then
     INPUT_HOST=$(echo "$ESCAPED_BRANCH")
 
+    if [[ -n "$INPUT_FQDN_PREFIX" ]]; then
+      INPUT_HOST=$(echo "$INPUT_FQDN_PREFIX$INPUT_HOST")
+    fi
+
     # Limit to 64 chars max
     INPUT_HOST="${INPUT_HOST:0:64}"
 
@@ -57,6 +61,10 @@ if [[ -z "$INPUT_HOST" ]]; then
     fi
   else
     INPUT_HOST=$(echo "$ESCAPED_BRANCH.$INPUT_ROOT_DOMAIN")
+
+    if [[ -n "$INPUT_FQDN_PREFIX" ]]; then
+      INPUT_HOST=$(echo "$INPUT_FQDN_PREFIX$INPUT_HOST")
+    fi
 
     # Limit to 64 chars max
     if [ ${#INPUT_HOST} -gt 64 ]; then
