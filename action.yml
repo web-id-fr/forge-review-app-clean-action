@@ -1,9 +1,11 @@
 name: 'Forge Review-app Clean Action'
 description: 'Clean a review-application on Laravel Forge'
 author: 'rygilles'
+
 branding:
   icon: upload-cloud
   color: red
+
 inputs:
   forge_api_token:
     description: 'Laravel Forge API key'
@@ -32,11 +34,28 @@ inputs:
     required: false
   database_name_prefix:
     description: 'Database name prefix, useful for PostgreSQL that does not support digits (PR number) for first chars'
+
 outputs:
   host:
     description: 'Host of the review-app (generated or forced one in inputs)'
+    value: ${{ steps.forge-review-app-clean-action.outputs.host }}
   database_name:
     description: 'Database name of the review-app (generated or forced one in inputs)'
+    value: ${{ steps.forge-review-app-clean-action.outputs.database_name }}
+
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: 'composite'
+  steps:
+    - name: "Forge Review-app Clean Action"
+      id: forge-review-app-clean-action
+      uses: "docker://ghcr.io/web-id-fr/forge-review-app-clean-action:v1.1.2"
+      env:
+        INPUT_FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
+        INPUT_FORGE_SERVER_ID: ${{ inputs.forge_server_id }}
+        INPUT_ROOT_DOMAIN: ${{ inputs.root_domain }}
+        INPUT_HOST: ${{ inputs.host }}
+        INPUT_PREFIX_WITH_PR_NUMBER: ${{ inputs.prefix_with_pr_number }}
+        INPUT_FQDN_PREFIX: ${{ inputs.fqdn_prefix }}
+        INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+        INPUT_DATABASE_NAME: ${{ inputs.database_name }}
+        INPUT_DATABASE_NAME_PREFIX: ${{ inputs.database_name_prefix }}
