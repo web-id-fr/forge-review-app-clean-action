@@ -99,18 +99,21 @@ if [[ -n "$GITHUB_ACTIONS" && "$GITHUB_ACTIONS" == "true" ]]; then
 fi
 
 AUTH_HEADER="Authorization: Bearer $INPUT_FORGE_API_TOKEN"
+ACCEPT_HEADER="Accept: application/vnd.api+json"
+
+API_BASE="https://forge.laravel.com/api/orgs/$INPUT_FORGE_ORGANIZATION/servers/$INPUT_FORGE_SERVER_ID"
 
 echo '* Get Forge server sites'
-API_URL="https://forge.laravel.com/api/v1/servers/$INPUT_FORGE_SERVER_ID/sites"
+API_URL="$API_BASE/sites?filter%5Bname%5D=$INPUT_HOST"
 JSON_RESPONSE=$(
   curl -s -H "$AUTH_HEADER" \
-    -H "Accept: application/json" \
+    -H "$ACCEPT_HEADER" \
     "$API_URL"
 )
 echo "$JSON_RESPONSE" > sites.json
 
-# Check if review-app site exists
-SITE_DATA=$(jq -r '.sites[] | select(.name == "'"$INPUT_HOST"'") // empty' sites.json)
+# Check if review-app site exists (filter[name] may be a partial match, so confirm the exact name)
+SITE_DATA=$(jq -r '.data[] | select(.attributes.name == "'"$INPUT_HOST"'") // empty' sites.json)
 if [[ ! -z "$SITE_DATA" ]]; then
   echo "$SITE_DATA" > site.json
   SITE_ID=$(jq -r '.id' site.json)
@@ -125,21 +128,19 @@ if [[ $RA_FOUND == 'true' ]]; then
   echo ""
   echo "* Delete review-app site"
 
-  API_URL="https://forge.laravel.com/api/v1/servers/$INPUT_FORGE_SERVER_ID/sites/$SITE_ID"
+  API_URL="$API_BASE/sites/$SITE_ID"
 
   HTTP_STATUS=$(
     curl -s -o response.json -w "%{http_code}" \
       -X DELETE \
       -H "$AUTH_HEADER" \
-      -H "Accept: application/json" \
-      -H "Content-Type: application/json" \
-      -d "$JSON_PAYLOAD" \
+      -H "$ACCEPT_HEADER" \
       "$API_URL"
   )
 
   JSON_RESPONSE=$(cat response.json)
 
-  if [[ $HTTP_STATUS -eq 200 ]]; then
+  if [[ $HTTP_STATUS -eq 202 ]]; then
     echo "Site (ID $SITE_ID) deleted successfully"
   else
     echo "Failed to delete site (ID $SITE_ID). HTTP status code: $HTTP_STATUS"
@@ -151,16 +152,16 @@ fi
 
 echo ""
 echo '* Get Forge server databases'
-API_URL="https://forge.laravel.com/api/v1/servers/$INPUT_FORGE_SERVER_ID/databases"
+API_URL="$API_BASE/database/schemas?filter%5Bname%5D=$INPUT_DATABASE_NAME"
 JSON_RESPONSE=$(
   curl -s -H "$AUTH_HEADER" \
-    -H "Accept: application/json" \
+    -H "$ACCEPT_HEADER" \
     "$API_URL"
 )
 echo "$JSON_RESPONSE" > databases.json
 
-# Check if review-app database exists
-DATABASE_DATA=$(jq -r '.databases[] | select(.name == "'"$INPUT_DATABASE_NAME"'") // empty' databases.json)
+# Check if review-app database exists (filter[name] may be a partial match, so confirm the exact name)
+DATABASE_DATA=$(jq -r '.data[] | select(.attributes.name == "'"$INPUT_DATABASE_NAME"'") // empty' databases.json)
 if [[ ! -z "$DATABASE_DATA" ]]; then
   echo "$DATABASE_DATA" > database.json
   DATABASE_ID=$(jq -r '.id' database.json)
@@ -175,26 +176,22 @@ if [[ $DATABASE_FOUND == 'true' ]]; then
   echo ""
   echo "* Delete review-app database"
 
-  API_URL="https://forge.laravel.com/api/v1/servers/$INPUT_FORGE_SERVER_ID/databases/$DATABASE_ID"
+  API_URL="$API_BASE/database/schemas/$DATABASE_ID"
 
   HTTP_STATUS=$(
     curl -s -o response.json -w "%{http_code}" \
       -X DELETE \
       -H "$AUTH_HEADER" \
-      -H "Accept: application/json" \
-      -H "Content-Type: application/json" \
-      -d "$JSON_PAYLOAD" \
+      -H "$ACCEPT_HEADER" \
       "$API_URL"
   )
 
   JSON_RESPONSE=$(cat response.json)
 
-  if [[ $HTTP_STATUS -eq 200 ]]; then
-    echo $(jq '.site' response.json) > site.json
-    SITE_ID=$(jq -r '.id' site.json)
+  if [[ $HTTP_STATUS -eq 202 ]]; then
     echo "Database (ID $DATABASE_ID, NAME $INPUT_DATABASE_NAME) deleted successfully"
   else
-    echo "Failed to delete database (ID $SITE_ID, NAME $INPUT_DATABASE_NAME). HTTP status code: $HTTP_STATUS"
+    echo "Failed to delete database (ID $DATABASE_ID, NAME $INPUT_DATABASE_NAME). HTTP status code: $HTTP_STATUS"
     echo "JSON Response:"
     echo "$JSON_RESPONSE"
     exit 1

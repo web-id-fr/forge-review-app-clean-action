@@ -11,7 +11,7 @@ It works in combination with this other action which removes create ad setup rev
 
 ### Action running process
 
-All steps are done using [Forge API](https://forge.laravel.com/api-documentation).
+All steps are done using the [Forge API v2](https://forge.laravel.com/docs/api-reference/introduction).
 
 - Delete site.
 - Delete database.
@@ -33,6 +33,7 @@ It is highly recommended that you store all inputs using [GitHub Secrets](https:
 | Input                   | Required | Default | Description                                                                                                                                                                                   |
 |-------------------------|----------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `forge_api_token`       | yes      |         | Laravel Forge API key.<br>You can generate an API key in your [Forge dashboard](https://forge.laravel.com/user-profile/api).                                                                  |
+| `forge_organization`    | yes      |         | Laravel Forge organization slug (required by the [API v2](https://forge.laravel.com/docs/api-reference/introduction)).                                                                       |
 | `forge_server_id`       | yes      |         | Laravel Forge server ID                                                                                                                                                                       |
 | `root_domain`           | no       |         | Root domain under which to create review-app site.                                                                                                                                            |
 | `host`                  | no       |         | Site host of the review-app.<br>The branch name the action is running on will be used to generate it if not defined (recommended).                                                            |
@@ -66,9 +67,10 @@ jobs:
 
     steps:
       - name: Clean review-app on Forge
-        uses: web-id-fr/forge-review-app-clean-action@v1.0.0
+        uses: web-id-fr/forge-review-app-clean-action@v2.0.0
         with:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
+          forge_organization: ${{ secrets.FORGE_ORGANIZATION }}
           forge_server_id: ${{ secrets.FORGE_SERVER_ID }}
 ```
 

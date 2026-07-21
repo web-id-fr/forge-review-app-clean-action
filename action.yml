@@ -10,6 +10,9 @@ inputs:
   forge_api_token:
     description: 'Laravel Forge API key'
     required: true
+  forge_organization:
+    description: 'Laravel Forge organization slug'
+    required: true
   forge_server_id:
     description: 'Laravel Forge server ID'
     required: true
@@ -48,9 +51,10 @@ runs:
   steps:
     - name: "Forge Review-app Clean Action"
       id: forge-review-app-clean-action
-      uses: "docker://ghcr.io/web-id-fr/forge-review-app-clean-action:v1.1.2"
+      uses: "docker://ghcr.io/web-id-fr/forge-review-app-clean-action:v2.0.0"
       env:
         INPUT_FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
+        INPUT_FORGE_ORGANIZATION: ${{ inputs.forge_organization }}
         INPUT_FORGE_SERVER_ID: ${{ inputs.forge_server_id }}
         INPUT_ROOT_DOMAIN: ${{ inputs.root_domain }}
         INPUT_HOST: ${{ inputs.host }}
