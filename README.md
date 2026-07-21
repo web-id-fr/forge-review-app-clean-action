@@ -26,6 +26,18 @@ For example, a `fix-37` branch with `mydomain.tld` root_domain will result in a 
 
 `database_name` is also based on the branch name (escaping it with only `a-z0-9_` chars).
 
+## Upgrading to v2
+
+Starting with `v2`, this action uses [Forge API v2](https://forge.laravel.com/docs/api-reference/introduction), which is organized around organizations and servers instead of a flat list of servers as in v1. This is a breaking change if you are currently using `@v1` (or a `v1.x` tag).
+
+### What you need to change in your workflow
+
+1. **Pin the action to `@v2`** instead of `@v1` (or a `v1.x` tag). `@v1` keeps working against the previous behavior for existing consumers, it will not receive the v2 changes.
+2. **Add the new required input `forge_organization`**, set to the slug of the organization that owns your server (visible in the Forge dashboard URL when browsing your server).
+3. Regenerate/verify your `forge_api_token` still has access to the organization and server you are targeting.
+
+Everything else (inputs, outputs, host/database name generation) keeps working the same way.
+
 ## Inputs
 
 It is highly recommended that you store all inputs using [GitHub Secrets](https://docs.github.com/en/actions/reference/encrypted-secrets) or variables.
