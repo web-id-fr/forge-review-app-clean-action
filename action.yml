@@ -51,7 +51,7 @@ runs:
   steps:
     - name: "Forge Review-app Clean Action"
       id: forge-review-app-clean-action
-      uses: "docker://ghcr.io/web-id-fr/forge-review-app-clean-action:forge-api-v2-migration"
+      uses: "docker://ghcr.io/web-id-fr/forge-review-app-clean-action:v2.0.0"
       env:
         INPUT_FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
         INPUT_FORGE_ORGANIZATION: ${{ inputs.forge_organization }}
