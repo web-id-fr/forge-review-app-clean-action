@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 AUTH_HEADER="Authorization: Bearer $INPUT_FORGE_API_TOKEN"
@@ -6,9 +6,12 @@ ACCEPT_HEADER="Accept: application/vnd.api+json"
 API_BASE="https://forge.laravel.com/api/orgs/$INPUT_FORGE_ORGANIZATION/servers/$INPUT_FORGE_SERVER_ID"
 
 # Delete a Forge site by exact host name, if it exists.
-# Sets SITE_DELETED to 'true'/'false'.
+# Sets SITE_STATUS to 'deleted' / 'not_found' / 'error' (does not exit on API
+# failure: callers decide whether that's fatal, see run_classic_mode vs
+# run_cleanup_orphans_mode).
 delete_site() {
-  HOST="$1"
+  local HOST="$1"
+  local API_URL JSON_RESPONSE SITE_DATA SITE_ID HTTP_STATUS
 
   API_URL="$API_BASE/sites?filter%5Bname%5D=$HOST"
   JSON_RESPONSE=$(curl -s -H "$AUTH_HEADER" -H "$ACCEPT_HEADER" "$API_URL")
@@ -18,7 +21,7 @@ delete_site() {
   SITE_DATA=$(jq -r '.data[] | select(.attributes.name == "'"$HOST"'") // empty' sites.json)
   if [[ -z "$SITE_DATA" ]]; then
     echo "Site $HOST not found"
-    SITE_DELETED='false'
+    SITE_STATUS='not_found'
     return
   fi
 
@@ -41,19 +44,21 @@ delete_site() {
 
   if [[ $HTTP_STATUS -eq 202 ]]; then
     echo "Site (ID $SITE_ID) deleted successfully"
-    SITE_DELETED='true'
+    SITE_STATUS='deleted'
   else
     echo "Failed to delete site (ID $SITE_ID). HTTP status code: $HTTP_STATUS"
     echo "JSON Response:"
     echo "$JSON_RESPONSE"
-    exit 1
+    SITE_STATUS='error'
   fi
 }
 
 # Delete a Forge database schema by exact name, if it exists.
-# Sets DATABASE_DELETED to 'true'/'false'.
+# Sets DATABASE_STATUS to 'deleted' / 'not_found' / 'error' (does not exit on
+# API failure: callers decide whether that's fatal).
 delete_database() {
-  DB_NAME="$1"
+  local DB_NAME="$1"
+  local API_URL JSON_RESPONSE DATABASE_DATA DATABASE_ID HTTP_STATUS
 
   echo ""
   echo '* Get Forge server databases'
@@ -65,7 +70,7 @@ delete_database() {
   DATABASE_DATA=$(jq -r '.data[] | select(.attributes.name == "'"$DB_NAME"'") // empty' databases.json)
   if [[ -z "$DATABASE_DATA" ]]; then
     echo "Database $DB_NAME not found"
-    DATABASE_DELETED='false'
+    DATABASE_STATUS='not_found'
     return
   fi
 
@@ -88,12 +93,12 @@ delete_database() {
 
   if [[ $HTTP_STATUS -eq 202 ]]; then
     echo "Database (ID $DATABASE_ID, NAME $DB_NAME) deleted successfully"
-    DATABASE_DELETED='true'
+    DATABASE_STATUS='deleted'
   else
     echo "Failed to delete database (ID $DATABASE_ID, NAME $DB_NAME). HTTP status code: $HTTP_STATUS"
     echo "JSON Response:"
     echo "$JSON_RESPONSE"
-    exit 1
+    DATABASE_STATUS='error'
   fi
 }
 
@@ -197,9 +202,15 @@ run_classic_mode() {
 
   echo '* Get Forge server sites'
   delete_site "$INPUT_HOST"
+  if [[ "$SITE_STATUS" == 'error' ]]; then
+    exit 1
+  fi
 
   echo ""
   delete_database "$INPUT_DATABASE_NAME"
+  if [[ "$DATABASE_STATUS" == 'error' ]]; then
+    exit 1
+  fi
 }
 
 # List every site on the Forge server, following JSON:API pagination (links.next).
@@ -224,7 +235,8 @@ list_all_sites() {
 # NB: this does not account for a custom fqdn_prefix, which is not
 # recoverable from the host alone.
 derive_database_name_from_host() {
-  HOST="$1"
+  local HOST="$1"
+  local SEGMENT DB_NAME
   SEGMENT="$HOST"
   if [[ -n "$INPUT_ROOT_DOMAIN" && "$HOST" == *".$INPUT_ROOT_DOMAIN" ]]; then
     SEGMENT="${HOST%.$INPUT_ROOT_DOMAIN}"
@@ -239,7 +251,8 @@ derive_database_name_from_host() {
 # Check the state of a GitHub PR.
 # Echoes one of: open | closed | not_found | unknown (API error/rate-limit: treat as "don't touch").
 check_pr_state() {
-  PR_NUMBER="$1"
+  local PR_NUMBER="$1"
+  local GH_URL HTTP_STATUS STATE
 
   GH_URL="https://api.github.com/repos/$EFFECTIVE_REPOSITORY/pulls/$PR_NUMBER"
   HTTP_STATUS=$(
@@ -304,13 +317,25 @@ run_cleanup_orphans_mode() {
     [.[] | select(.attributes.name | test($pat))
          | {id: .id, host: .attributes.name}]
   ' all_sites.json > matched_sites.json
+  MATCHED_COUNT=$(jq 'length' matched_sites.json)
 
-  # Extract the PR number (leading digits) from each matched host, drop
-  # non-matching entries, then dedup by PR number (keep first occurrence).
+  # A matched host may still not start with a PR number, e.g. with a custom
+  # host_pattern that does not anchor on it. Such sites can never be resolved
+  # to a PR, so make that visible instead of silently dropping them.
+  jq '[.[] | select(.host | test("^[0-9]+-") | not)]' matched_sites.json > unparsable_sites.json
+  UNPARSABLE_COUNT=$(jq 'length' unparsable_sites.json)
+  if [[ $UNPARSABLE_COUNT -gt 0 ]]; then
+    echo "Warning: $UNPARSABLE_COUNT of $MATCHED_COUNT matched site(s) do not start with a PR number ({pr}-...) and will be ignored (they can never be cleaned up by this action):"
+    jq -r '.[].host' unparsable_sites.json | sed 's/^/  - /'
+  fi
+
+  # Extract the PR number (leading digits) from each parsable host, then
+  # dedup by PR number (keep first occurrence).
+  jq '[.[] | select(.host | test("^[0-9]+-"))]' matched_sites.json > parsable_sites.json
   jq '
-    [.[] | (.host | capture("^(?<pr>[0-9]+)-").pr) as $pr | . + {pr: $pr}]
+    [.[] | . + {pr: (.host | capture("^(?<pr>[0-9]+)-").pr)}]
     | unique_by(.pr)
-  ' matched_sites.json > candidates.json
+  ' parsable_sites.json > candidates.json
 
   CANDIDATE_COUNT=$(jq 'length' candidates.json)
   echo "Found $CANDIDATE_COUNT candidate review-app(s) after filtering/dedup"
@@ -319,9 +344,14 @@ run_cleanup_orphans_mode() {
   ORPHANS_DELETED=0
   echo '[]' > orphans.json
 
-  for i in $(seq 0 $((CANDIDATE_COUNT - 1))); do
-    [[ $CANDIDATE_COUNT -eq 0 ]] && break
+  append_orphan_result() {
+    local PR="$1" HOST="$2" DELETED="$3"
+    jq --arg pr "$PR" --arg host "$HOST" --argjson deleted "$DELETED" \
+      '. + [{pr: $pr, host: $host, deleted: $deleted}]' orphans.json > orphans.json.tmp
+    mv orphans.json.tmp orphans.json
+  }
 
+  for i in $(seq 0 $((CANDIDATE_COUNT - 1))); do
     CANDIDATE=$(jq -c ".[$i]" candidates.json)
     CANDIDATE_PR=$(echo "$CANDIDATE" | jq -r '.pr')
     CANDIDATE_HOST=$(echo "$CANDIDATE" | jq -r '.host')
@@ -343,21 +373,30 @@ run_cleanup_orphans_mode() {
     # PR_STATE is "closed" or "not_found": confirmed orphan
     echo "PR #$CANDIDATE_PR is $PR_STATE, site $CANDIDATE_HOST is orphaned"
     ORPHANS_FOUND=$((ORPHANS_FOUND + 1))
-    DELETED='false'
 
     if [[ "${INPUT_DRY_RUN:-false}" == 'true' ]]; then
       echo "[dry_run] Would delete site $CANDIDATE_HOST (and its database)"
-    else
-      delete_site "$CANDIDATE_HOST"
-      DB_NAME=$(derive_database_name_from_host "$CANDIDATE_HOST")
-      delete_database "$DB_NAME"
-      DELETED='true'
-      ORPHANS_DELETED=$((ORPHANS_DELETED + 1))
+      append_orphan_result "$CANDIDATE_PR" "$CANDIDATE_HOST" 'false'
+      continue
     fi
 
-    jq --arg pr "$CANDIDATE_PR" --arg host "$CANDIDATE_HOST" --argjson deleted "$DELETED" \
-      '. + [{pr: $pr, host: $host, deleted: $deleted}]' orphans.json > orphans.json.tmp
-    mv orphans.json.tmp orphans.json
+    delete_site "$CANDIDATE_HOST"
+    if [[ "$SITE_STATUS" == 'error' ]]; then
+      echo "Warning: failed to delete site $CANDIDATE_HOST, skipping this candidate for now (it will be retried on the next run)"
+      append_orphan_result "$CANDIDATE_PR" "$CANDIDATE_HOST" 'false'
+      continue
+    fi
+
+    DB_NAME=$(derive_database_name_from_host "$CANDIDATE_HOST")
+    delete_database "$DB_NAME"
+    if [[ "$DATABASE_STATUS" == 'error' ]]; then
+      echo "Warning: site $CANDIDATE_HOST was deleted but failed to delete database $DB_NAME, skipping the rest of this candidate for now (it will be retried on the next run)"
+      append_orphan_result "$CANDIDATE_PR" "$CANDIDATE_HOST" 'false'
+      continue
+    fi
+
+    ORPHANS_DELETED=$((ORPHANS_DELETED + 1))
+    append_orphan_result "$CANDIDATE_PR" "$CANDIDATE_HOST" 'true'
   done
 
   echo ""
