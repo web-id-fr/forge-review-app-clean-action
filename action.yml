@@ -37,21 +37,47 @@ inputs:
     required: false
   database_name_prefix:
     description: 'Database name prefix, useful for PostgreSQL that does not support digits (PR number) for first chars'
+  cleanup_orphans:
+    description: 'Enable "orphan cleanup" mode: ignore host/pr_number/database_name and discover+delete orphaned review-apps on the server'
+    required: false
+    default: 'false'
+  repository:
+    description: 'GitHub repository ("owner/repo") to check PR state against. Required if cleanup_orphans is true. Defaults to GITHUB_REPOSITORY'
+    required: false
+  github_token:
+    description: 'GitHub token used to check PR state (repos/{repository}/pulls/{pr}). Required if cleanup_orphans is true'
+    required: false
+  host_pattern:
+    description: 'ERE regex (jq/grep -P compatible) used to identify review-app sites among all server sites. Defaults to a pattern derived from root_domain'
+    required: false
+  dry_run:
+    description: 'If true, only log the orphans that would be deleted, without deleting anything'
+    required: false
+    default: 'false'
 
 outputs:
   host:
-    description: 'Host of the review-app (generated or forced one in inputs)'
+    description: 'Host of the review-app (generated or forced one in inputs). Not used in cleanup_orphans mode'
     value: ${{ steps.forge-review-app-clean-action.outputs.host }}
   database_name:
-    description: 'Database name of the review-app (generated or forced one in inputs)'
+    description: 'Database name of the review-app (generated or forced one in inputs). Not used in cleanup_orphans mode'
     value: ${{ steps.forge-review-app-clean-action.outputs.database_name }}
+  orphans_found:
+    description: 'Number of orphaned review-apps detected (cleanup_orphans mode only)'
+    value: ${{ steps.forge-review-app-clean-action.outputs.orphans_found }}
+  orphans_deleted:
+    description: 'Number of orphaned review-apps actually deleted (cleanup_orphans mode only, 0 if dry_run)'
+    value: ${{ steps.forge-review-app-clean-action.outputs.orphans_deleted }}
+  orphans_json:
+    description: 'JSON array of the orphaned sites processed (cleanup_orphans mode only)'
+    value: ${{ steps.forge-review-app-clean-action.outputs.orphans_json }}
 
 runs:
   using: 'composite'
   steps:
     - name: "Forge Review-app Clean Action"
       id: forge-review-app-clean-action
-      uses: "docker://ghcr.io/web-id-fr/forge-review-app-clean-action:v2.0.0"
+      uses: "docker://ghcr.io/web-id-fr/forge-review-app-clean-action:v2.1.0"
       env:
         INPUT_FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
         INPUT_FORGE_ORGANIZATION: ${{ inputs.forge_organization }}
@@ -63,3 +89,9 @@ runs:
         INPUT_PR_NUMBER: ${{ inputs.pr_number }}
         INPUT_DATABASE_NAME: ${{ inputs.database_name }}
         INPUT_DATABASE_NAME_PREFIX: ${{ inputs.database_name_prefix }}
+        INPUT_CLEANUP_ORPHANS: ${{ inputs.cleanup_orphans }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
+        INPUT_HOST_PATTERN: ${{ inputs.host_pattern }}
+        INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
