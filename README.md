@@ -38,6 +38,20 @@ Starting with `v2`, this action uses [Forge API v2](https://forge.laravel.com/do
 
 Everything else (inputs, outputs, host/database name generation) keeps working the same way.
 
+## API token & scopes
+
+The Forge API v2 uses OAuth2-style scopes on API tokens (unlike the v1 legacy tokens, which were unscoped and granted full access to everything the owning account could do). When generating your `forge_api_token` in the [Forge dashboard](https://forge.laravel.com/user-profile/api), select the following scopes so this action can run end-to-end:
+
+The order below matches the order scopes appear in the Forge dashboard's token creation form (server scopes first, then site scopes), to make them easier to tick off:
+
+| Scope                     | Why it's needed                                        |
+|---------------------------|---------------------------------------------------------|
+| `server:view`              | List sites and database schemas to find the review-app. |
+| `server:delete-databases`  | Delete the review-app database.                          |
+| `site:delete`              | Delete the review-app site.                              |
+
+Also make sure the token owner has access to the target organization and server.
+
 ## Inputs
 
 It is highly recommended that you store all inputs using [GitHub Secrets](https://docs.github.com/en/actions/reference/encrypted-secrets) or variables.
